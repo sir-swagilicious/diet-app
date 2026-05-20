@@ -7,6 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncpg
 from app.config import settings
 from app.api import recipes, auth, products
+from fastapi.openapi.utils import get_openapi
+
+
 
 
 @asynccontextmanager
@@ -30,7 +33,15 @@ app = FastAPI(
     description="API для приложения диетического контроля с ИИ-генерацией рецептов",
     version="1.0.0",
     lifespan=lifespan,
+    swagger_ui_init_oauth={
+        "usePkceWithAuthorizationCodeGrant": True,
+    },
+    # Отключаем implicit OAuth2 flow
+    swagger_ui_parameters={
+        "persistAuthorization": True,  # Запоминать токен после обновления
+    },
 )
+
 
 # Настройка CORS
 app.add_middleware(
@@ -68,3 +79,30 @@ async def health_check():
         "database": db_status,
         "ollama": settings.OLLAMA_BASE_URL,
     }
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    openapi_schema = get_openapi(
+        title="Diet Control API",
+        version="1.0.0",
+        routes=app.routes,
+    )
+    
+    # Явно указываем Bearer Auth
+    openapi_schema["components"]["securitySchemes"] = {
+        "bearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+        }
+    }
+    
+    openapi_schema["security"] = [{"bearerAuth": []}]
+    
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
