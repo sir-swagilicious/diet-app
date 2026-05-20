@@ -68,32 +68,21 @@ class GeneratedRecipe(BaseModel):
 
 
 # -------------------- Работа с БД --------------------
-async def get_user_products(pool: asyncpg.Pool, user_id: int) -> list[dict]:
-    """
-    Извлекает из БД список продуктов, которые есть у пользователя в данный момент.
-    Возвращает список словарей с ключами: name, quantity, unit, category.
-    """
+async def get_user_products(pool, user_id: str) -> list[dict]:
+    """Получает продукты пользователя из fridge_items"""
     query = """
-        SELECT 
-            p.name,
-            up.quantity,
-            p.unit,
-            p.category
-        FROM user_products up
-        JOIN products p ON up.product_id = p.id
-        WHERE up.user_id = $1 AND up.quantity > 0
-        ORDER BY p.category, p.name
+        SELECT product_name, quantity, unit, category
+        FROM fridge_items
+        WHERE user_id = $1::uuid AND quantity > 0
+        ORDER BY category, product_name
     """
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, user_id)
-
+    
     if not rows:
-        logger.warning(f"У пользователя {user_id} не найдено продуктов")
         return []
-
-    products = [dict(row) for row in rows]
-    logger.info(f"Получено {len(products)} продуктов для пользователя {user_id}")
-    return products
+    
+    return [dict(row) for row in rows]
 
 
 async def get_user_diet_profile(pool: asyncpg.Pool, user_id: int) -> dict:
@@ -127,49 +116,50 @@ async def get_user_diet_profile(pool: asyncpg.Pool, user_id: int) -> dict:
     }
 
 
-async def save_generated_recipe(
-    pool: asyncpg.Pool,
-    user_id: int,
-    recipe: GeneratedRecipe,
-    prompt_used: str,
-    model_used: str,
-) -> int:
-    """Сохраняет сгенерированный рецепт в БД, возвращает его ID"""
-    query = """
-        INSERT INTO generated_recipes (
-            user_id, title, description, cooking_time_minutes,
-            difficulty, servings, ingredients_json, instructions_json,
-            nutritional_info_json, missing_ingredients_json,
-            tips, prompt_used, model_used, created_at
-        ) VALUES (
-            $1, $2, $3, $4,
-            $5, $6, $7::jsonb, $8::jsonb,
-            $9::jsonb, $10::jsonb,
-            $11, $12, $13, $14
-        )
-        RETURNING id
-    """
+async def save_generated_recipe(pool, user_id: str, recipe, prompt_used: str, model_used: str) -> str:
+    """Сохраняет сгенерированный рецепт в recipes и recipe_ingredients"""
     async with pool.acquire() as conn:
+        # Сохраняем рецепт
         recipe_id = await conn.fetchval(
-            query,
+            """
+            INSERT INTO recipes (
+                created_by_user_id, title, description, instructions,
+                cooking_time_minutes, calories, proteins, fats, carbs,
+                tags, source
+            ) VALUES (
+                $1::uuid, $2, $3, $4::jsonb,
+                $5, $6, $7, $8, $9,
+                $10::jsonb, 'ai_generated'
+            )
+            RETURNING id
+            """,
             user_id,
             recipe.title,
             recipe.description,
+            [{"step": i+1, "text": step} for i, step in enumerate(recipe.instructions)],
             recipe.cooking_time_minutes,
-            recipe.difficulty,
-            recipe.servings,
-            # Pydantic-модели сериализуем в JSON
-            [ing.model_dump() for ing in recipe.ingredients_available],
-            recipe.instructions,
-            recipe.nutritional_info.model_dump(),
-            [ing.model_dump() for ing in recipe.ingredients_missing],
-            recipe.tips,
-            prompt_used,
-            model_used,
-            datetime.utcnow(),
+            int(recipe.nutritional_info.calories_kcal),
+            recipe.nutritional_info.proteins_g,
+            recipe.nutritional_info.fats_g,
+            recipe.nutritional_info.carbs_g,
+            [recipe.difficulty, "ai_generated"],
         )
-    logger.info(f"Рецепт сохранён в БД с ID={recipe_id}")
-    return recipe_id
+        
+        # Сохраняем ингредиенты
+        for ing in recipe.ingredients_available + recipe.ingredients_missing:
+            await conn.execute(
+                """
+                INSERT INTO recipe_ingredients (recipe_id, product_name, quantity, unit, is_optional)
+                VALUES ($1::uuid, $2, $3, $4, $5)
+                """,
+                recipe_id,
+                ing.name,
+                float(ing.amount.split()[0]) if ing.amount.split()[0].replace('.', '').isdigit() else 0,
+                ing.amount.split()[-1] if ing.amount.split()[-1].isalpha() else 'шт',
+                ing in recipe.ingredients_missing,
+            )
+        
+        return str(recipe_id)
 
 
 # -------------------- Формирование промпта --------------------
