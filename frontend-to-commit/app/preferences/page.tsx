@@ -9,7 +9,6 @@ const cuisines = ["Italian", "Asian", "Mexican", "Mediterranean", "Russian"];
 const dislikedProducts = ["Onion", "Mushrooms", "Broccoli", "Fish", "Beans"];
 
 export default function PreferencesPage() {
-  const [saved, setSaved] = useState(false);
   const [selectedDiet, setSelectedDiet] = useState("Balanced");
   const [selectedAllergies, setSelectedAllergies] = useState(["Nuts"]);
   const [selectedCuisines, setSelectedCuisines] = useState([
@@ -40,16 +39,7 @@ export default function PreferencesPage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          className="primary-btn"
-          onClick={() => {
-            setSaved(true);
-            window.setTimeout(() => setSaved(false), 2200);
-          }}
-        >
-          {saved ? "Saved ✓" : "Save Preferences"}
-        </button>
+        <button className="primary-btn">Save Preferences</button>
       </div>
 
       <div className="preference-grid">
@@ -62,7 +52,6 @@ export default function PreferencesPage() {
           <div className="preference-options">
             {dietTypes.map((diet) => (
               <button
-                type="button"
                 key={diet}
                 className={`option-pill ${
                   selectedDiet === diet ? "active" : ""
@@ -103,7 +92,6 @@ export default function PreferencesPage() {
           <div className="preference-options">
             {allergies.map((item) => (
               <button
-                type="button"
                 key={item}
                 className={`option-pill ${
                   selectedAllergies.includes(item) ? "active" : ""
@@ -127,7 +115,6 @@ export default function PreferencesPage() {
           <div className="preference-options">
             {cuisines.map((item) => (
               <button
-                type="button"
                 key={item}
                 className={`option-pill ${
                   selectedCuisines.includes(item) ? "active" : ""
@@ -151,7 +138,6 @@ export default function PreferencesPage() {
           <div className="preference-options">
             {dislikedProducts.map((item) => (
               <button
-                type="button"
                 key={item}
                 className={`option-pill ${
                   selectedDisliked.includes(item) ? "active" : ""

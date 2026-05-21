@@ -2,38 +2,30 @@
 
 import AppShell from "@/components/AppShell";
 import { generateAiMealPlan } from "@/services/mockApi";
-import {
-  ApiError,
-  generateAiRecipe,
-  getAuthToken,
-  mapGeneratedRecipeToAssistant,
-  type GeneratedRecipe,
-} from "@/services/api";
 import { useState } from "react";
 
-type AssistantResult = {
+type AiRecipe = {
+  title: string;
+  calories: string;
+  reason: string;
+};
+
+type AiResult = {
+  prompt: string;
   answer: string;
-  recipes: Array<{
-    title: string;
-    calories: string;
-    reason: string;
-  }>;
+  recipes: AiRecipe[];
   missingItems: string[];
-  fullRecipe?: GeneratedRecipe;
-  source: "api" | "mock";
 };
 
 export default function AssistantPage() {
   const [prompt, setPrompt] = useState(
     "What can I cook with chicken breast, rice, tomato and cucumber?"
   );
-  const [result, setResult] = useState<AssistantResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [result, setResult] = useState<AiResult | null>(null);
   const [messages, setMessages] = useState([
     {
       role: "ai",
-      text: "Hello! Log in and start the backend to generate recipes from your fridge via GET /api/recipes/generate.",
+      text: "Hello! I can help you plan meals based on your fridge, diet goals, and missing ingredients.",
     },
   ]);
 
@@ -44,72 +36,23 @@ export default function AssistantPage() {
       return;
     }
 
-    setLoading(true);
-    setError("");
+    const aiResult = await generateAiMealPlan(prompt);
 
-    try {
-      if (getAuthToken()) {
-        const recipe = await generateAiRecipe();
-        const mapped = mapGeneratedRecipeToAssistant(recipe);
+    setMessages((current) => [
+      ...current,
+      { role: "user", text: prompt },
+      { role: "ai", text: aiResult.answer },
+    ]);
 
-        setMessages((current) => [
-          ...current,
-          { role: "user", text: prompt },
-          {
-            role: "ai",
-            text: mapped.answer,
-          },
-        ]);
-
-        setResult({
-          ...mapped,
-          source: "api",
-        });
-      } else {
-        throw new ApiError("Log in to use the backend API", 401);
-      }
-    } catch (err) {
-      const mockResult = await generateAiMealPlan(prompt);
-
-      setMessages((current) => [
-        ...current,
-        { role: "user", text: prompt },
-        { role: "ai", text: mockResult.answer },
-      ]);
-
-      setResult({
-        answer: mockResult.answer,
-        recipes: mockResult.recipes,
-        missingItems: mockResult.missingItems,
-        source: "mock",
-      });
-
-      if (err instanceof ApiError) {
-        setError(`${err.message} — showing demo data instead.`);
-      } else {
-        setError(
-          "Backend unavailable — showing demo data. Start API on port 8000."
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
+    setResult(aiResult);
   };
 
   return (
     <AppShell>
       <h1 className="page-title">AI Assistant</h1>
       <div className="page-subtitle">
-        Uses backend <code>GET /api/recipes/generate</code> when logged in
+        Ask MealMaster to generate meals from your fridge and preferences
       </div>
-
-      {error && (
-        <div className="panel" style={{ marginTop: 14 }}>
-          <div className="page-subtitle" style={{ color: "#d97706" }}>
-            {error}
-          </div>
-        </div>
-      )}
 
       <div className="assistant-layout">
         <section className="chat-card">
@@ -132,8 +75,8 @@ export default function AssistantPage() {
               placeholder="Ask AI what to cook today..."
             />
 
-            <button className="primary-btn" type="submit" disabled={loading}>
-              {loading ? "Generating..." : "Generate"}
+            <button className="primary-btn" type="submit">
+              Generate
             </button>
           </form>
         </section>
@@ -142,35 +85,30 @@ export default function AssistantPage() {
           <div className="meal-name">AI Context</div>
 
           <div className="ai-result-card">
-            <div className="expiring-title">Backend</div>
+            <div className="expiring-title">Current fridge</div>
             <div className="page-subtitle">
-              {getAuthToken()
-                ? "JWT set — calls /api/recipes/generate"
-                : "Not logged in — demo mode only"}
+              Chicken breast, tomato, cucumber, rice, milk
+            </div>
+          </div>
+
+          <div className="ai-result-card">
+            <div className="expiring-title">User preferences</div>
+            <div className="page-subtitle">
+              Balanced diet, 2200 calories, allergic to nuts
             </div>
           </div>
 
           <div className="ai-result-card">
             <div className="expiring-title">Model</div>
-            <div className="page-subtitle">Llama 3 via Ollama (backend)</div>
+            <div className="page-subtitle">Llama 3 via Ollama</div>
           </div>
         </aside>
       </div>
 
       {result && (
         <div className="panel" style={{ marginTop: 18 }}>
-          <div className="meal-name">
-            Generated Meal Plan
-            {result.source === "api" ? " (from API)" : " (demo)"}
-          </div>
+          <div className="meal-name">Generated Meal Plan</div>
           <div className="page-subtitle">{result.answer}</div>
-
-          {result.fullRecipe && (
-            <div className="page-subtitle" style={{ marginTop: 8 }}>
-              {result.fullRecipe.difficulty} · {result.fullRecipe.servings}{" "}
-              servings · {result.fullRecipe.cooking_time_minutes} min
-            </div>
-          )}
 
           <div className="ai-recipe-list">
             {result.recipes.map((recipe) => (
@@ -184,31 +122,14 @@ export default function AssistantPage() {
             ))}
           </div>
 
-          {result.fullRecipe && result.fullRecipe.instructions.length > 0 && (
-            <>
-              <h2 className="section-title">Instructions</h2>
-              <ol className="page-subtitle" style={{ paddingLeft: 18 }}>
-                {result.fullRecipe.instructions.map((step) => (
-                  <li key={step} style={{ marginBottom: 8 }}>
-                    {step}
-                  </li>
-                ))}
-              </ol>
-            </>
-          )}
-
           <h2 className="section-title">Missing Ingredients</h2>
 
           <div className="tag-row">
-            {result.missingItems.length > 0 ? (
-              result.missingItems.map((item) => (
-                <span className="small-tag" key={item}>
-                  {item}
-                </span>
-              ))
-            ) : (
-              <span className="page-subtitle">None — you have everything!</span>
-            )}
+            {result.missingItems.map((item) => (
+              <span className="small-tag" key={item}>
+                {item}
+              </span>
+            ))}
           </div>
         </div>
       )}

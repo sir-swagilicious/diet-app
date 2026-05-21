@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import jwt
 from jwt import PyJWTError as JWTError
 from passlib.context import CryptContext
@@ -35,18 +35,22 @@ class TokenResponse(BaseModel):
 
 # --- Утилиты ---
 def create_access_token(user_data: dict) -> str:
-    """Создаёт JWT токен с UUID пользователя"""
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    """Создаёт JWT токен с UUID пользователя (exp/iat — Unix timestamp)."""
+    now = datetime.now(UTC)
+    expire = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "sub": str(user_data["id"]),
         "user_id": str(user_data["id"]),
         "email": user_data["email"],
         "full_name": user_data.get("full_name", ""),
         "type": "access",
-        "iat": datetime.utcnow(),
-        "exp": expire,
+        "iat": int(now.timestamp()),
+        "exp": int(expire.timestamp()),
     }
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    encoded = jwt.encode(
+        payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
+    return encoded if isinstance(encoded, str) else encoded.decode("utf-8")
 
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
@@ -155,8 +159,9 @@ async def get_me(
     current_user["id"] = str(current_user["id"])
     current_user["created_at"] = current_user["created_at"].isoformat()
     return current_user
-@router.get("/debug-token")
 
+
+@router.get("/debug-token")
 async def debug_token(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):

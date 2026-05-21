@@ -1,5 +1,4 @@
 import Link from "next/link";
-import ApiStatus from "@/components/ApiStatus";
 import AppShell from "@/components/AppShell";
 import { expiringSoon, todayMeals, todayStats, weekPlan } from "@/data/mockData";
 
@@ -7,7 +6,6 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <section>
-        <ApiStatus />
         <h1 className="page-title">Welcome back!</h1>
         <div className="page-subtitle">Here&apos;s your meal plan for today</div>
 

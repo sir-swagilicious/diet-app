@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { clearAuth, getAuthUser, type AuthUser } from "@/services/api";
 import {
   BarChartOutlined,
   BookOutlined,
@@ -56,6 +58,18 @@ export default function AppShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    setUser(getAuthUser());
+  }, [pathname]);
+
+  const handleLogout = () => {
+    clearAuth();
+    setUser(null);
+    router.push("/login");
+  };
 
   return (
     <div className="page">
@@ -66,29 +80,53 @@ export default function AppShell({
             <span>MealMaster</span>
           </Link>
 
-<nav className="nav">
-  {navItems.map((item) => {
-    const isActive =
-      item.href === "/"
-        ? pathname === "/"
-        : pathname.startsWith(item.href);
+          <nav className="nav">
+            {navItems.map((item) => {
+              const isActive =
+                item.href === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(item.href);
 
-    return (
-      <Link
-        key={item.href}
-        href={item.href}
-        className={`nav-link ${isActive ? "active" : ""}`}
-      >
-        {item.icon}
-        <span>{item.label}</span>
-      </Link>
-    );
-  })}
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-label={item.label}
+                  className={`nav-link ${isActive ? "active" : ""}`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
 
-  <Link href="/login" className="nav-link">
-    <span>Login</span>
-  </Link>
-</nav>
+            {user ? (
+              <>
+                <span
+                  className="nav-link"
+                  style={{ cursor: "default", color: "#667085" }}
+                  title={user.email}
+                >
+                  <span>{user.full_name || user.email}</span>
+                </span>
+                <button
+                  type="button"
+                  className="nav-link"
+                  onClick={handleLogout}
+                  style={{ border: 0, background: "transparent" }}
+                >
+                  <span>Logout</span>
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className={`nav-link ${pathname === "/login" ? "active" : ""}`}
+              >
+                <span>Login</span>
+              </Link>
+            )}
+          </nav>
         </div>
       </header>
 

@@ -2,18 +2,55 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ApiError, getAuthUser, login, register, type AuthUser } from "@/services/api";
 
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState<AuthUser | null>(null);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    setLoggedInUser(getAuthUser());
+  }, []);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setError("");
+    setLoading(true);
 
-    // Temporary frontend-only logic.
-    // Later this place will be connected to backend API.
-    router.push("/");
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get("email") ?? "");
+    const password = String(form.get("password") ?? "");
+    const fullName = String(form.get("fullName") ?? "User");
+
+    if (mode === "register") {
+      const confirm = String(form.get("confirmPassword") ?? "");
+      if (password !== confirm) {
+        setError("Passwords do not match.");
+        setLoading(false);
+        return;
+      }
+    }
+
+    try {
+      if (mode === "register") {
+        await register(email, password, fullName);
+      } else {
+        await login(email, password);
+      }
+      router.push("/");
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : "Could not reach backend. Start API on http://localhost:8000";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,9 +88,16 @@ export default function LoginPage() {
 
           <div className="auth-card-subtitle">
             {mode === "login"
-              ? "Log in to continue your meal plan."
-              : "Create your account and start planning meals."}
+              ? "Log in to get a JWT token for the API."
+              : "Register to save your meal data in the database."}
           </div>
+
+          {loggedInUser && (
+            <div className="page-subtitle" style={{ marginBottom: 12 }}>
+              Already logged in as {loggedInUser.email}.{" "}
+              <Link href="/">Go to dashboard</Link>
+            </div>
+          )}
 
           <div className="auth-tabs">
             <button
@@ -73,6 +117,15 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {error && (
+            <div
+              className="page-subtitle"
+              style={{ color: "#d92d20", marginBottom: 12 }}
+            >
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             {mode === "register" && (
               <div className="form-group">
@@ -81,9 +134,11 @@ export default function LoginPage() {
                 </label>
                 <input
                   id="fullName"
+                  name="fullName"
                   className="form-input"
                   type="text"
                   placeholder="Enter your name"
+                  required
                 />
               </div>
             )}
@@ -94,9 +149,11 @@ export default function LoginPage() {
               </label>
               <input
                 id="email"
+                name="email"
                 className="form-input"
                 type="email"
                 placeholder="you@example.com"
+                required
               />
             </div>
 
@@ -106,9 +163,11 @@ export default function LoginPage() {
               </label>
               <input
                 id="password"
+                name="password"
                 className="form-input"
                 type="password"
                 placeholder="Enter password"
+                required
               />
             </div>
 
@@ -119,23 +178,33 @@ export default function LoginPage() {
                 </label>
                 <input
                   id="confirmPassword"
+                  name="confirmPassword"
                   className="form-input"
                   type="password"
                   placeholder="Repeat password"
+                  required
                 />
               </div>
             )}
 
-            <button className="auth-submit" type="submit">
-              {mode === "login" ? "Login" : "Create account"}
+            <button className="auth-submit" type="submit" disabled={loading}>
+              {loading
+                ? "Connecting..."
+                : mode === "login"
+                  ? "Login"
+                  : "Create account"}
             </button>
           </form>
 
           <div className="auth-divider">or continue with</div>
 
           <div className="social-buttons">
-            <button className="social-btn">Google</button>
-            <button className="social-btn">GitHub</button>
+            <button type="button" className="social-btn" disabled>
+              Google
+            </button>
+            <button type="button" className="social-btn" disabled>
+              GitHub
+            </button>
           </div>
 
           <div className="auth-note">

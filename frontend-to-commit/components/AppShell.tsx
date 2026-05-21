@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { clearAuth, getAuthUser, type AuthUser } from "@/services/api";
 import {
   BarChartOutlined,
   BookOutlined,
@@ -56,6 +58,18 @@ export default function AppShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    setUser(getAuthUser());
+  }, [pathname]);
+
+  const handleLogout = () => {
+    clearAuth();
+    setUser(null);
+    router.push("/login");
+  };
 
   return (
     <div className="page">
@@ -86,13 +100,32 @@ export default function AppShell({
               );
             })}
 
-            <Link
-              href="/login"
-              aria-label="Login"
-              className={`nav-link ${pathname === "/login" ? "active" : ""}`}
-            >
-              <span>Login</span>
-            </Link>
+            {user ? (
+              <>
+                <span
+                  className="nav-link"
+                  style={{ cursor: "default", color: "#667085" }}
+                  title={user.email}
+                >
+                  <span>{user.full_name || user.email}</span>
+                </span>
+                <button
+                  type="button"
+                  className="nav-link"
+                  onClick={handleLogout}
+                  style={{ border: 0, background: "transparent" }}
+                >
+                  <span>Logout</span>
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className={`nav-link ${pathname === "/login" ? "active" : ""}`}
+              >
+                <span>Login</span>
+              </Link>
+            )}
           </nav>
         </div>
       </header>
