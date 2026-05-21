@@ -2,14 +2,19 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ApiError, login, register } from "@/services/api";
+import { useEffect, useState } from "react";
+import { ApiError, getAuthUser, login, register, type AuthUser } from "@/services/api";
 
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    setLoggedInUser(getAuthUser());
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -19,11 +24,20 @@ export default function LoginPage() {
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email") ?? "");
     const password = String(form.get("password") ?? "");
-    const name = String(form.get("fullName") ?? "User");
+    const fullName = String(form.get("fullName") ?? "User");
+
+    if (mode === "register") {
+      const confirm = String(form.get("confirmPassword") ?? "");
+      if (password !== confirm) {
+        setError("Passwords do not match.");
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       if (mode === "register") {
-        await register(email, password, name);
+        await register(email, password, fullName);
       } else {
         await login(email, password);
       }
@@ -74,9 +88,16 @@ export default function LoginPage() {
 
           <div className="auth-card-subtitle">
             {mode === "login"
-              ? "Log in to continue your meal plan."
-              : "Create your account and start planning meals."}
+              ? "Log in to get a JWT token for the API."
+              : "Register to save your meal data in the database."}
           </div>
+
+          {loggedInUser && (
+            <div className="page-subtitle" style={{ marginBottom: 12 }}>
+              Already logged in as {loggedInUser.email}.{" "}
+              <Link href="/">Go to dashboard</Link>
+            </div>
+          )}
 
           <div className="auth-tabs">
             <button
@@ -157,9 +178,11 @@ export default function LoginPage() {
                 </label>
                 <input
                   id="confirmPassword"
+                  name="confirmPassword"
                   className="form-input"
                   type="password"
                   placeholder="Repeat password"
+                  required
                 />
               </div>
             )}
@@ -176,8 +199,12 @@ export default function LoginPage() {
           <div className="auth-divider">or continue with</div>
 
           <div className="social-buttons">
-            <button className="social-btn">Google</button>
-            <button className="social-btn">GitHub</button>
+            <button type="button" className="social-btn" disabled>
+              Google
+            </button>
+            <button type="button" className="social-btn" disabled>
+              GitHub
+            </button>
           </div>
 
           <div className="auth-note">

@@ -63,7 +63,7 @@ export default function NutritionPage() {
           <div className="bar-row">
             <span>Protein</span>
             <div className="bar-track">
-              <div className="bar-fill" style={{ width: "65%" }} />
+              <div className="progress-fill green" style={{ width: "65%" }} />
             </div>
             <span>98g</span>
           </div>
@@ -71,7 +71,7 @@ export default function NutritionPage() {
           <div className="bar-row">
             <span>Carbs</span>
             <div className="bar-track">
-              <div className="bar-fill orange" style={{ width: "75%" }} />
+              <div className="progress-fill orange" style={{ width: "75%" }} />
             </div>
             <span>225g</span>
           </div>
@@ -79,7 +79,7 @@ export default function NutritionPage() {
           <div className="bar-row">
             <span>Fat</span>
             <div className="bar-track">
-              <div className="bar-fill orange" style={{ width: "70%" }} />
+              <div className="progress-fill orange" style={{ width: "70%" }} />
             </div>
             <span>69g</span>
           </div>

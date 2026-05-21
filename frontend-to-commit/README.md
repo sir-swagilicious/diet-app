@@ -1,52 +1,36 @@
-# MealMaster Frontend
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Next.js UI for the Diet Control API backend.
+## Getting Started
 
-## Setup
+First, run the development server:
 
-```powershell
-npm install
-copy .env.local.example .env.local
+```bash
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-Open http://localhost:3000
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Backend connection
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-Set in `.env.local`:
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-```
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
+## Learn More
 
-1. Start the FastAPI backend on port 8000
-2. Log in at `/login` to store a JWT
-3. Use **Assistant** for `GET /api/recipes/generate`
+To learn more about Next.js, take a look at the following resources:
 
-Without the backend, the app still works with mock/local data.
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-## Scripts
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Development server |
-| `npm run build` | Production build |
-| `npm run start` | Run production build |
-| `npm run lint` | ESLint |
+## Deploy on Vercel
 
-## Project structure
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-```
-app/           # Pages (App Router)
-components/    # AppShell, ApiStatus
-data/          # mockData, foodEmojis
-lib/           # customRecipes (localStorage)
-services/      # api.ts (backend client), mockApi.ts
-```
-
-## Custom recipes + emojis
-
-- Emoji list: `data/foodEmojis.ts`
-- Create flow: Recipes → **+ New Recipe**
-- Saved in `localStorage` (not sent to initial backend)
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
